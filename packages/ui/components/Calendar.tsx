@@ -288,22 +288,24 @@ const CalendarGrid = memo(
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
 
-    const calendarDays = useMemo(() => {
+    const { calendarWeeks } = useMemo(() => {
       const firstDay = new Date(year, month, 1)
       const lastDay = new Date(year, month + 1, 0)
       const startDate = new Date(firstDay)
       startDate.setDate(startDate.getDate() - firstDay.getDay())
 
-      const days: Date[] = []
+      const weeks: Date[][] = []
       const current = new Date(startDate)
 
       for (let week = 0; week < 6; week++) {
+        const weekDays: Date[] = []
         for (let day = 0; day < 7; day++) {
-          days.push(new Date(current))
+          weekDays.push(new Date(current))
           current.setDate(current.getDate() + 1)
         }
+        weeks.push(weekDays)
       }
-      return days
+      return { calendarWeeks: weeks }
     }, [year, month])
 
     const isToday = useCallback((date: Date) => {
@@ -324,7 +326,7 @@ const CalendarGrid = memo(
     return (
       <View className="px-4">
         {/* Day headers */}
-        <View className="mb-2 flex-row justify-between">
+        <View className="mb-2 grid grid-cols-7">
           {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((day) => (
             <CalendarDayHeader
               key={day}
@@ -336,18 +338,20 @@ const CalendarGrid = memo(
         </View>
 
         {/* Calendar days */}
-        <View className="flex-row flex-wrap">
-          {calendarDays.map((date, index) => (
-            <CalendarDay
-              key={index}
-              date={date}
-              selected={isSelected(date)}
-              today={isToday(date)}
-              currentMonth={isCurrentMonth(date)}
-              onSelect={onDateSelect}
-              {...classNames}
-            />
-          ))}
+        <View className="grid grid-cols-7">
+          {calendarWeeks.map((week, weekIndex) =>
+            week.map((date, dayIndex) => (
+              <CalendarDay
+                key={`${weekIndex}-${dayIndex}`}
+                date={date}
+                selected={isSelected(date)}
+                today={isToday(date)}
+                currentMonth={isCurrentMonth(date)}
+                onSelect={onDateSelect}
+                {...classNames}
+              />
+            )),
+          )}
         </View>
       </View>
     )
