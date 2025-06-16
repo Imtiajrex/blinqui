@@ -1,64 +1,32 @@
 {
-  "name": "nativewindui",
-  "version": "1.0.0",
-  "main": "expo-router/entry",
-  "scripts": {
-    "android": "expo run:android",
-    "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
-    "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
-    "ios": "expo run:ios",
-    "start": "expo start",
-    "dev": "expo start --clear",
-    "web": "expo start --web",
-    "clean": "rm -rf node_modules .expo"
-  },
-  "dependencies": {
-    "@expo/react-native-action-sheet": "^4.0.1",
-    "@gorhom/bottom-sheet": "^4",
-    "@react-native-community/datetimepicker": "8.0.1",
-    "@react-native-community/slider": "4.5.2",
-    "@react-native-picker/picker": "2.7.5",
-    "@react-navigation/native": "^6.1.7",
-    "@rn-primitives/avatar": "^1.0.4",
-    "@roninoss/icons": "^0.0.4",
-    "@shopify/flash-list": "1.6.4",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.0",
-    "expo": "~51.0.38",
-    "expo-constants": "~16.0.2",
-    "expo-dev-client": "~4.0.28",
-    "expo-linking": "~6.3.1",
-    "expo-navigation-bar": "~3.0.6",
-    "expo-router": "~3.5.23",
-    "expo-status-bar": "~1.12.1",
-    "expo-store-review": "~7.0.2",
-    "expo-system-ui": "~3.0.6",
-    "nativewind": "^4.1.21",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "react-native": "0.74.5",
-    "react-native-gesture-handler": "~2.16.2",
-    "react-native-reanimated": "~3.10.1",
-    "react-native-safe-area-context": "4.10.5",
-    "react-native-screens": "~3.31.1",
-    "react-native-uitextview": "^1.1.4",
-    "react-native-web": "~0.19.10",
-    "tailwind-merge": "^2.2.1"
+  "name": "blinq.ui",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "resolutions": {
+    "metro": "~0.76.7",
+    "metro-resolver": "~0.76.7"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "@types/react": "~18.2.14",
-    "@typescript-eslint/eslint-plugin": "^7.7.0",
-    "@typescript-eslint/parser": "^7.7.0",
-    "eslint": "^8.57.0",
-    "eslint-config-universe": "^12.0.1",
-    "prettier": "^3.2.5",
-    "prettier-plugin-tailwindcss": "^0.5.11",
-    "tailwindcss": "^3.4.0",
+    "eslint": "^8.21.0",
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "turbo": "^1.4.2",
     "typescript": "~5.3.3"
   },
-  "eslintConfig": {
-    "extends": "universe/native"
+  "scripts": {
+    "native": "cd apps/expo && yarn start",
+    "web": "cd apps/next && yarn next",
+    "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
   },
-  "private": true
+  "nohoist": [
+    "**/expo-router",
+    "**/expo-router/**",
+    "**/react-native-google-mobile-ads",
+    "**/react-native-google-mobile-ads/**",
+    "**/expo-build-properties",
+    "**/expo-build-properties/**"
+  ]
 }

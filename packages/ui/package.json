@@ -1,0 +1,12 @@
+{
+  "version": "0.0.0",
+  "name": "blinqui",
+  "main": "index.ts",
+  "dependencies": {
+    "clsx": "^2.0.0",
+    "moti": "latest",
+    "nativewind": "latest",
+    "tailwind-merge": "^3.3.1"
+  },
+  "sideEffects": false
+}

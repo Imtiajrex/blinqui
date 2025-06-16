@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "paths": {
+      "assets/*": ["assets/*"],
+      "components/*": ["../../packages/ui/components/*"],
+      "constants/*": ["constants/*"],
+      "hooks/*": ["hooks/*"]
+    },
+    "esModuleInterop": true
+  },
+  "extends": "../../tsconfig",
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "nativewind-env.d.ts",
+    "../../types.d.ts",
+    "../../packages/ui/screens/login.tsx",
+    "../../packages/ui/screens/signup.tsx"
+  ]
+}
