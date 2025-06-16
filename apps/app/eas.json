@@ -1,0 +1,34 @@
+{
+  "cli": {
+    "version": ">= 7.5.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "node": "22.13.0",
+      "channel": "master",
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      }
+    },
+    "preview": {
+      "node": "22.13.0",
+      "channel": "master",
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium",
+        "simulator": true
+      }
+    },
+    "production": {
+      "node": "22.13.0",
+      "channel": "master",
+      "ios": {
+        "resourceClass": "m-medium"
+      }
+    }
+  },
+  "submit": {}
+}
