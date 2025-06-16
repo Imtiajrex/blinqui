@@ -9,6 +9,19 @@ import {
 } from 'react-native'
 import Picker, { PickerData } from './WheelPicker'
 import { cn } from '../lib/utils'
+import Animated, {
+  FadeIn,
+  FadeOut,
+  SlideInLeft,
+  SlideInRight,
+  SlideOutLeft,
+  SlideOutRight,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 
 // Shared className types
 interface BaseClassNames {
@@ -277,7 +290,69 @@ const generateDays = (year: number, month: number): PickerData[] => {
   return days
 }
 
-// Calendar Grid Component
+// Animated wrapper component for calendar days
+const AnimatedCalendarDay = memo(
+  ({
+    date,
+    selected,
+    today,
+    currentMonth,
+    onSelect,
+    isEntering,
+    direction,
+    ...classNames
+  }: CalendarDayProps & {
+    isEntering: boolean
+    direction: 'left' | 'right'
+  }) => {
+    const enteringAnimation = direction === 'left' ? SlideInLeft : SlideInRight
+    const exitingAnimation = direction === 'left' ? SlideOutRight : SlideOutLeft
+
+    return (
+      <Animated.View
+        entering={enteringAnimation.springify().damping(15)}
+        exiting={exitingAnimation.springify().damping(15)}
+      >
+        <TouchableOpacity
+          onPress={() => onSelect(date)}
+          className={cn(
+            'h-10 w-10 items-center justify-center',
+            classNames.dayClassName,
+          )}
+        >
+          <View
+            className={cn(
+              'h-8 w-8 items-center justify-center rounded-full',
+              selected && cn('bg-blue-500', classNames.selectedDayClassName),
+              today && cn('bg-blue-100', classNames.todayClassName),
+            )}
+          >
+            <Text
+              className={cn(
+                'font-medium',
+                selected &&
+                  cn('text-white', classNames.selectedDayTextClassName),
+                today && cn('text-blue-600', classNames.todayTextClassName),
+                !selected &&
+                  !today &&
+                  currentMonth &&
+                  cn('text-gray-900', classNames.dayTextClassName),
+                !selected &&
+                  !today &&
+                  !currentMonth &&
+                  cn('text-gray-400', classNames.otherMonthDayTextClassName),
+              )}
+            >
+              {date.getDate()}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    )
+  },
+)
+
+// Calendar Grid Component with unified animation
 const CalendarGrid = memo(
   ({
     currentDate,
@@ -287,10 +362,22 @@ const CalendarGrid = memo(
   }: CalendarGridProps) => {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
+    const [transitionDirection, setTransitionDirection] = useState<
+      'left' | 'right'
+    >('right')
+    const [prevMonth, setPrevMonth] = useState({ year, month })
+
+    // Update transition direction when month changes
+    useMemo(() => {
+      const isForward =
+        year > prevMonth.year ||
+        (year === prevMonth.year && month > prevMonth.month)
+      setTransitionDirection(isForward ? 'right' : 'left')
+      setPrevMonth({ year, month })
+    }, [year, month])
 
     const { calendarWeeks } = useMemo(() => {
       const firstDay = new Date(year, month, 1)
-      const lastDay = new Date(year, month + 1, 0)
       const startDate = new Date(firstDay)
       startDate.setDate(startDate.getDate() - firstDay.getDay())
 
@@ -337,21 +424,40 @@ const CalendarGrid = memo(
           ))}
         </View>
 
-        {/* Calendar days */}
-        <View className="grid grid-cols-7">
-          {calendarWeeks.map((week, weekIndex) =>
-            week.map((date, dayIndex) => (
-              <CalendarDay
-                key={`${weekIndex}-${dayIndex}`}
-                date={date}
-                selected={isSelected(date)}
-                today={isToday(date)}
-                currentMonth={isCurrentMonth(date)}
-                onSelect={onDateSelect}
-                {...classNames}
-              />
-            )),
-          )}
+        {/* Calendar days with unified animation */}
+        <View className="relative h-60 overflow-hidden">
+          <Animated.View
+            className="absolute inset-0 grid grid-cols-7"
+            key={`${year}-${month}`}
+            entering={(transitionDirection === 'right'
+              ? SlideInRight
+              : SlideInLeft
+            )
+              .springify()
+              .damping(20)
+              .stiffness(100)}
+            exiting={(transitionDirection === 'right'
+              ? SlideOutLeft
+              : SlideOutRight
+            )
+              .springify()
+              .damping(20)
+              .stiffness(100)}
+          >
+            {calendarWeeks.map((week, weekIndex) =>
+              week.map((date, dayIndex) => (
+                <CalendarDay
+                  key={`${weekIndex}-${dayIndex}`}
+                  date={date}
+                  selected={isSelected(date)}
+                  today={isToday(date)}
+                  currentMonth={isCurrentMonth(date)}
+                  onSelect={onDateSelect}
+                  {...classNames}
+                />
+              )),
+            )}
+          </Animated.View>
         </View>
       </View>
     )
