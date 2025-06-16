@@ -8,5 +8,8 @@
     "nativewind": "latest",
     "tailwind-merge": "^3.3.1"
   },
+  "devDependencies": {
+    "react-native-reanimated": "~3.4.0"
+  },
   "sideEffects": false
 }
