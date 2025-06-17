@@ -23,14 +23,14 @@ import {
 } from 'react-native-gesture-handler'
 import { snapPoint } from 'react-native-redash'
 
-export type PickerData = {
+export type WheelPickerData = {
   title: string
   value: any
 }
 
-export type PickerProps = ViewProps & {
+export type WheelPickerProps = ViewProps & {
   itemHeight?: number
-  pickerData: PickerData[]
+  pickerData: WheelPickerData[]
   initialIndex?: number
   visible?: number
   textStyle?: StyleProp<TextStyle>
@@ -41,10 +41,10 @@ export type PickerProps = ViewProps & {
     selected?: string
     bottom?: string
   }
-  onSelected: (data: PickerData, index: number) => void
+  onSelected: (data: WheelPickerData, index: number) => void
 }
 
-const Picker = ({
+export const WheelPicker = ({
   itemHeight = 40,
   pickerData,
   visible = 5,
@@ -60,7 +60,7 @@ const Picker = ({
   onSelected,
   className,
   ...props
-}: PickerProps & { className?: string }) => {
+}: WheelPickerProps & { className?: string }) => {
   return (
     <View
       {...props}
@@ -80,15 +80,14 @@ const Picker = ({
     </View>
   )
 }
-export default Picker
 type PickerItemProps = Required<
   Pick<
-    PickerProps,
+    WheelPickerProps,
     'itemHeight' | 'pickerData' | 'visible' | 'textStyle' | 'initialIndex'
   >
 > &
   Pick<
-    PickerProps,
+    WheelPickerProps,
     'onSelected' | 'contentContainerStyle' | 'selectedViewColor' | 'maskColors'
   >
 
@@ -312,9 +311,9 @@ const PickerItem = ({
 type ItemProps = {
   translateY: Animated.SharedValue<number>
   index: number
-  data: PickerData
-} & Required<Pick<PickerProps, 'itemHeight' | 'visible'>> &
-  Pick<PickerProps, 'textStyle'>
+  data: WheelPickerData
+} & Required<Pick<WheelPickerProps, 'itemHeight' | 'visible'>> &
+  Pick<WheelPickerProps, 'textStyle'>
 
 const Item = ({
   translateY,
