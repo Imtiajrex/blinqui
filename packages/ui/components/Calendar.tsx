@@ -1,4 +1,8 @@
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  CalendarProvider,
+  useCalendarContext,
+} from '../contexts/CalendarContext'
 import {
   Modal,
   Pressable,
@@ -13,8 +17,10 @@ import Animated, {
   FadeIn,
   FadeOut,
   LinearTransition,
+  SlideInDown,
   SlideInLeft,
   SlideInRight,
+  SlideInUp,
   SlideOutLeft,
   SlideOutRight,
   runOnJS,
@@ -23,6 +29,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import { SolarIcon } from 'react-native-solar-icons'
 
 // Shared className types
 interface BaseClassNames {
@@ -86,22 +93,17 @@ interface DayHeaderProps
 }
 
 interface CalendarHeaderProps extends HeaderClassNames {
-  currentDate: Date
   onMonthYearClick: () => void
-  onNavigateMonth: (direction: 'prev' | 'next') => void
+  showMonthYearPicker?: boolean
 }
 
 interface CalendarGridProps extends DayClassNames {
-  currentDate: Date
   selectedDate: Date
   onDateSelect: (date: Date) => void
 }
 
 interface MonthYearPickerProps extends ModalClassNames {
-  visible: boolean
-  currentDate: Date
-  onClose: () => void
-  onDateChange: (date: Date) => void
+  onMonthYearChange: (date: Date) => void
 }
 
 interface DatePickerProps
@@ -187,29 +189,71 @@ const CalendarDayHeader = memo(
   ),
 )
 
+// remapProps(SolarIcon, {
+//   className: {
+//     target: true,
+//     nativeStyleToProp: {
+//       color: 'color',
+//       width: 'size',
+//       height: 'size',
+//       fontSize: 'size',
+//     },
+//   },
+// })
+
 const CalendarHeader = memo(
   ({
-    currentDate,
     onMonthYearClick,
-    onNavigateMonth,
     headerClassName,
     monthYearTextClassName,
     navigationButtonClassName,
     navigationButtonTextClassName,
+    showMonthYearPicker = false,
   }: CalendarHeaderProps) => {
+    const currentDate = useCalendarContext((state) => state.currentDate)
+    const navigateMonthStore = useCalendarContext(
+      (state) => state.navigateMonth,
+    )
+
+    const navigateMonth = useCallback(
+      (direction: 'prev' | 'next') => {
+        navigateMonthStore(direction)
+      },
+      [navigateMonthStore],
+    )
     const formatMonth = useCallback((date: Date) => {
       return date.toLocaleDateString('en-US', {
         month: 'long',
         year: 'numeric',
       })
     }, [])
+    const animatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          {
+            rotate: showMonthYearPicker
+              ? withSpring('90deg', {
+                  damping: 3,
+                  stiffness: 100,
+                  mass: 0.3,
+                })
+              : withSpring('0deg', {
+                  damping: 3,
+                  stiffness: 100,
+                  mass: 0.3,
+                }),
+          },
+        ],
+      }
+    })
 
     return (
-      <View
+      <Animated.View
         className={cn(
           'flex-row items-center justify-between border-b border-gray-200 px-4 py-3',
           headerClassName,
         )}
+        entering={FadeIn.duration(200)}
       >
         <TouchableOpacity
           onPress={onMonthYearClick}
@@ -223,44 +267,53 @@ const CalendarHeader = memo(
           >
             {formatMonth(currentDate)}
           </Text>
-          <Text className={cn('text-gray-500', monthYearTextClassName)}>›</Text>
+          <Animated.View style={animatedStyle}>
+            {/* <SolarIcon
+              name="AltArrowRight"
+              type="line-duotone"
+              size={24}
+              color="blue"
+            /> */}
+          </Animated.View>
         </TouchableOpacity>
 
-        <View className="flex-row space-x-4">
-          <TouchableOpacity
-            onPress={() => onNavigateMonth('prev')}
-            className={cn(
-              'h-8 w-8 items-center justify-center',
-              navigationButtonClassName,
-            )}
-          >
-            <Text
+        {!showMonthYearPicker && (
+          <View className="flex-row space-x-4">
+            <TouchableOpacity
+              onPress={() => navigateMonth('prev')}
               className={cn(
-                'text-lg font-medium text-blue-500',
-                navigationButtonTextClassName,
+                'h-8 w-8 items-center justify-center',
+                navigationButtonClassName,
               )}
             >
-              ‹
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => onNavigateMonth('next')}
-            className={cn(
-              'h-8 w-8 items-center justify-center',
-              navigationButtonClassName,
-            )}
-          >
-            <Text
+              <Text
+                className={cn(
+                  'text-lg font-medium text-blue-500',
+                  navigationButtonTextClassName,
+                )}
+              >
+                ‹
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigateMonth('next')}
               className={cn(
-                'text-lg font-medium text-blue-500',
-                navigationButtonTextClassName,
+                'h-8 w-8 items-center justify-center',
+                navigationButtonClassName,
               )}
             >
-              ›
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+              <Text
+                className={cn(
+                  'text-lg font-medium text-blue-500',
+                  navigationButtonTextClassName,
+                )}
+              >
+                ›
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </Animated.View>
     )
   },
 )
@@ -291,14 +344,12 @@ const generateMonths = (): PickerData[] => [
 
 // Month/Year Picker Component
 const MonthYearPicker = ({
-  currentDate,
-  onClose,
-  onDateChange,
-  isInitialRender,
+  onMonthYearChange,
   ...classNames
-}: Omit<MonthYearPickerProps, 'visible'> & { isInitialRender?: boolean }) => {
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth())
+}: MonthYearPickerProps) => {
+  const currentDate = useCalendarContext((state) => state.currentDate)
+  const selectedYear = currentDate.getFullYear()
+  const selectedMonth = currentDate.getMonth()
 
   const years = useMemo(() => generateYears(1900, 2100), [])
   const months = useMemo(() => generateMonths(), [])
@@ -313,70 +364,32 @@ const MonthYearPicker = ({
     [months, selectedMonth],
   )
 
-  const handleConfirm = useCallback(() => {
-    const newDate = new Date(currentDate)
-    newDate.setFullYear(selectedYear)
-    newDate.setMonth(selectedMonth)
-    onDateChange(newDate)
-  }, [selectedYear, selectedMonth, currentDate, onDateChange])
+  const handleMonthChange = useCallback(
+    (data: PickerData) => {
+      const newDate = new Date(currentDate)
+      newDate.setFullYear(selectedYear)
+      newDate.setMonth(data.value)
+      onMonthYearChange(newDate)
+    },
+    [selectedYear, currentDate, onMonthYearChange],
+  )
 
-  const handleYearChange = useCallback((data: PickerData) => {
-    setSelectedYear(data.value)
-  }, [])
-
-  const handleMonthChange = useCallback((data: PickerData) => {
-    setSelectedMonth(data.value)
-  }, [])
+  const handleYearChange = useCallback(
+    (data: PickerData) => {
+      const newDate = new Date(currentDate)
+      newDate.setFullYear(data.value)
+      newDate.setMonth(selectedMonth)
+      onMonthYearChange(newDate)
+    },
+    [selectedMonth, currentDate, onMonthYearChange],
+  )
 
   return (
     <Animated.View
       className={cn('overflow-hidden', classNames.className)}
+      entering={SlideInUp.duration(300)}
       layout={LinearTransition}
     >
-      {/* Header */}
-      <View
-        className={cn(
-          'flex-row items-center justify-between border-b border-gray-200 p-4',
-          classNames.modalHeaderClassName,
-        )}
-      >
-        <TouchableOpacity
-          onPress={onClose}
-          className={cn('px-2', classNames.modalButtonClassName)}
-        >
-          <Text
-            className={cn(
-              'font-medium text-blue-500',
-              classNames.modalButtonTextClassName,
-            )}
-          >
-            Cancel
-          </Text>
-        </TouchableOpacity>
-        <Text
-          className={cn(
-            'font-semibold text-gray-900',
-            classNames.modalHeaderTextClassName,
-          )}
-        >
-          Select Date
-        </Text>
-        <TouchableOpacity
-          onPress={handleConfirm}
-          className={cn('px-2', classNames.modalButtonClassName)}
-        >
-          <Text
-            className={cn(
-              'font-medium text-blue-500',
-              classNames.modalButtonTextClassName,
-            )}
-          >
-            Done
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Pickers */}
       <View
         className={cn('w-full flex-row', classNames.pickerContainerClassName)}
       >
@@ -385,6 +398,15 @@ const MonthYearPicker = ({
             pickerData={months}
             initialIndex={currentMonthIndex}
             onSelected={handleMonthChange}
+            itemHeight={44}
+            visible={7}
+            textStyle={{ fontSize: 20 }}
+            className="bg-white"
+            maskColors={{
+              top: 'rgba(255, 255, 255, 0.9)',
+              selected: 'transparent',
+              bottom: 'rgba(255, 255, 255, 0.9)',
+            }}
           />
         </View>
         <View className="flex-1">
@@ -392,6 +414,15 @@ const MonthYearPicker = ({
             pickerData={years}
             initialIndex={currentYearIndex}
             onSelected={handleYearChange}
+            itemHeight={44}
+            visible={7}
+            textStyle={{ fontSize: 20 }}
+            className="bg-white"
+            maskColors={{
+              top: 'rgba(255, 255, 255, 0.9)',
+              selected: 'transparent',
+              bottom: 'rgba(255, 255, 255, 0.9)',
+            }}
           />
         </View>
       </View>
@@ -402,12 +433,12 @@ const MonthYearPicker = ({
 // Calendar Grid Component
 const CalendarGrid = memo(
   ({
-    currentDate,
     selectedDate,
     onDateSelect,
     isInitialRender = false,
     ...classNames
   }: CalendarGridProps & { isInitialRender?: boolean }) => {
+    const currentDate = useCalendarContext((state) => state.currentDate)
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
     const [transitionDirection, setTransitionDirection] = useState<
@@ -457,6 +488,34 @@ const CalendarGrid = memo(
       (date: Date) => date.getMonth() === month,
       [month],
     )
+    const renderDays = useMemo(() => {
+      return (
+        <View>
+          {calendarWeeks.map((week, weekIndex) => (
+            <View key={weekIndex} className="flex-row">
+              {week.map((date, dayIndex) => (
+                <CalendarDay
+                  key={`${weekIndex}-${dayIndex}`}
+                  date={date}
+                  selected={isSelected(date)}
+                  today={isToday(date)}
+                  currentMonth={isCurrentMonth(date)}
+                  onSelect={onDateSelect}
+                  {...classNames}
+                />
+              ))}
+            </View>
+          ))}
+        </View>
+      )
+    }, [
+      calendarWeeks,
+      isSelected,
+      isToday,
+      isCurrentMonth,
+      onDateSelect,
+      classNames,
+    ])
 
     return (
       <View className="px-4">
@@ -472,41 +531,33 @@ const CalendarGrid = memo(
           ))}
         </View>
 
-        {/* Calendar days with unified animation */}
-        <View className="overflow-hidden">
+        <View className="h-[280px] w-full overflow-hidden">
           <Animated.View
             key={`${year}-${month}`}
+            className="absolute top-0 w-full"
+            layout={undefined}
             entering={
               !isInitialRender
-                ? (transitionDirection === 'right' ? SlideInRight : SlideInLeft)
-                    .springify()
-                    .damping(20)
-                    .stiffness(100)
+                ? transitionDirection === 'right'
+                  ? SlideInRight.duration(300).withInitialValues({
+                      transform: [{ translateX: 400 }, { translateY: 0 }],
+                    })
+                  : SlideInLeft.duration(300).withInitialValues({
+                      transform: [{ translateX: -400 }, { translateY: 0 }],
+                    })
                 : undefined
             }
             exiting={
               transitionDirection === 'right'
-                ? SlideOutLeft.springify().damping(20).stiffness(100)
-                : SlideOutRight.springify().damping(20).stiffness(100)
+                ? SlideOutLeft.duration(300).withInitialValues({
+                    transform: [{ translateX: 0 }, { translateY: 0 }],
+                  })
+                : SlideOutRight.duration(300).withInitialValues({
+                    transform: [{ translateX: 0 }, { translateY: 0 }],
+                  })
             }
           >
-            <View>
-              {calendarWeeks.map((week, weekIndex) => (
-                <View key={weekIndex} className="flex-row">
-                  {week.map((date, dayIndex) => (
-                    <CalendarDay
-                      key={`${weekIndex}-${dayIndex}`}
-                      date={date}
-                      selected={isSelected(date)}
-                      today={isToday(date)}
-                      currentMonth={isCurrentMonth(date)}
-                      onSelect={onDateSelect}
-                      {...classNames}
-                    />
-                  ))}
-                </View>
-              ))}
-            </View>
+            {renderDays}
           </Animated.View>
         </View>
       </View>
@@ -515,7 +566,7 @@ const CalendarGrid = memo(
 )
 
 // Main DatePicker Component
-export const DatePicker = memo(
+const CalendarContent = memo(
   ({
     initialDate = new Date(),
     onDateChange,
@@ -524,9 +575,14 @@ export const DatePicker = memo(
     ...classNames
   }: DatePickerProps) => {
     const [selectedDate, setSelectedDate] = useState(initialDate)
-    const [currentViewDate, setCurrentViewDate] = useState(initialDate)
+    const setCurrentDate = useCalendarContext((state) => state.setCurrentDate)
     const [showMonthYearPicker, setShowMonthYearPicker] = useState(false)
     const [isInitialRender, setIsInitialRender] = useState(true)
+
+    // Initialize the store's currentDate with initialDate
+    useEffect(() => {
+      setCurrentDate(initialDate)
+    }, [initialDate, setCurrentDate])
 
     const handleDateSelect = useCallback(
       (date: Date) => {
@@ -536,27 +592,12 @@ export const DatePicker = memo(
       [onDateChange],
     )
 
-    const handleMonthYearChange = useCallback((date: Date) => {
-      setCurrentViewDate(date)
-      setShowMonthYearPicker(false)
-    }, [])
-
-    const handlePickerClose = useCallback(() => {
-      setShowMonthYearPicker(false)
-    }, [])
-
-    const navigateMonth = useCallback((direction: 'prev' | 'next') => {
-      setIsInitialRender(false)
-      setCurrentViewDate((prev) => {
-        const newDate = new Date(prev)
-        if (direction === 'prev') {
-          newDate.setMonth(prev.getMonth() - 1)
-        } else {
-          newDate.setMonth(prev.getMonth() + 1)
-        }
-        return newDate
-      })
-    }, [])
+    const handleMonthYearChange = useCallback(
+      (date: Date) => {
+        setCurrentDate(date)
+      },
+      [setCurrentDate],
+    )
 
     return (
       <View
@@ -566,57 +607,37 @@ export const DatePicker = memo(
         )}
       >
         <StatusBar barStyle="dark-content" />
-
         <CalendarHeader
-          currentDate={currentViewDate}
           onMonthYearClick={() => {
             setIsInitialRender(false)
-            setShowMonthYearPicker(true)
+            setShowMonthYearPicker((prev) => !prev)
           }}
-          onNavigateMonth={navigateMonth}
-          headerClassName={classNames.headerClassName}
-          monthYearTextClassName={classNames.monthYearTextClassName}
-          navigationButtonClassName={classNames.navigationButtonClassName}
-          navigationButtonTextClassName={
-            classNames.navigationButtonTextClassName
-          }
+          showMonthYearPicker={showMonthYearPicker}
+          {...classNames}
         />
 
-        <View className="relative">
-          {showMonthYearPicker ? (
-            <MonthYearPicker
-              currentDate={currentViewDate}
-              onClose={handlePickerClose}
-              onDateChange={handleMonthYearChange}
-              isInitialRender={isInitialRender}
-              modalClassName={classNames.modalClassName}
-              modalContentClassName={classNames.modalContentClassName}
-              modalHeaderClassName={classNames.modalHeaderClassName}
-              modalHeaderTextClassName={classNames.modalHeaderTextClassName}
-              modalButtonClassName={classNames.modalButtonClassName}
-              modalButtonTextClassName={classNames.modalButtonTextClassName}
-              pickerContainerClassName={classNames.pickerContainerClassName}
-            />
-          ) : (
-            <CalendarGrid
-              currentDate={currentViewDate}
-              selectedDate={selectedDate}
-              onDateSelect={handleDateSelect}
-              isInitialRender={isInitialRender}
-              dayHeaderClassName={classNames.dayHeaderClassName}
-              dayHeaderTextClassName={classNames.dayHeaderTextClassName}
-              dayClassName={classNames.dayClassName}
-              dayTextClassName={classNames.dayTextClassName}
-              selectedDayClassName={classNames.selectedDayClassName}
-              selectedDayTextClassName={classNames.selectedDayTextClassName}
-              todayClassName={classNames.todayClassName}
-              todayTextClassName={classNames.todayTextClassName}
-              otherMonthDayClassName={classNames.otherMonthDayClassName}
-              otherMonthDayTextClassName={classNames.otherMonthDayTextClassName}
-            />
-          )}
-        </View>
+        {!showMonthYearPicker ? (
+          <CalendarGrid
+            selectedDate={selectedDate}
+            onDateSelect={handleDateSelect}
+            isInitialRender={isInitialRender}
+            {...classNames}
+          />
+        ) : (
+          <MonthYearPicker
+            onMonthYearChange={handleMonthYearChange}
+            {...classNames}
+          />
+        )}
       </View>
     )
   },
 )
+
+export const DatePicker = memo((props: DatePickerProps) => {
+  return (
+    <CalendarProvider>
+      <CalendarContent {...props} />
+    </CalendarProvider>
+  )
+})
