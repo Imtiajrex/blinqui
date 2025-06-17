@@ -13,6 +13,7 @@ import Animated, {
   Easing,
   interpolate,
   runOnJS,
+  SharedValue,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -51,7 +52,7 @@ const duration = 300
 export const Picker = ({
   itemHeight = 40,
   pickerData,
-  visible = 5,
+  visible = 2, // now represents items visible on each side
   textStyle,
   contentContainerStyle,
   initialIndex = 0,
@@ -66,17 +67,14 @@ export const Picker = ({
   ...props
 }: PickerProps & { className?: string }) => {
   const listRef = useRef<any>(null)
-  const translateY = useSharedValue(-itemHeight * initialIndex)
   const currentIndex = useSharedValue(initialIndex)
   const scale = useSharedValue(0.95)
   const scrollY = useSharedValue(0)
   const isDragging = useSharedValue(false)
   const startY = useSharedValue(0)
 
-  const timingConfig = {
-    duration: duration,
-    easing: Easing.out(Easing.quad),
-  }
+  // Total visible items is 2 * visible + 1 (items on top + selected item + items on bottom)
+  const totalVisible = 2 * visible + 1
 
   useEffect(() => {
     scale.value = withSpring(1)
@@ -86,8 +84,8 @@ export const Picker = ({
     (index: number) => {
       'worklet'
       if (index >= 0 && index < pickerData.length) {
-        currentIndex.value = index
-        runOnJS(onSelected)(pickerData[index]!, index)
+        currentIndex.value = index + visible
+        runOnJS(onSelected)(pickerData[index + visible]!, index)
       }
     },
     [pickerData, onSelected],
@@ -111,7 +109,7 @@ export const Picker = ({
     .onUpdate((event) => {
       if (Platform.OS === 'web') {
         const newScrollY = startY.value - event.translationY
-        const maxScroll = (pickerData.length - visible) * itemHeight
+        const maxScroll = (pickerData.length - 1) * itemHeight
         const boundedScrollY = Math.max(0, Math.min(newScrollY, maxScroll))
 
         if (listRef.current) {
@@ -138,50 +136,6 @@ export const Picker = ({
       }
     })
 
-  const renderItem = useCallback(
-    ({ item, index }: { item: PickerData; index: number }) => {
-      const itemStyle = useAnimatedStyle(() => {
-        const centerOffset = scrollY.value + (visible * itemHeight) / 2
-        const itemPosition = index * itemHeight
-        const distanceFromCenter =
-          Math.abs(centerOffset - itemPosition) / itemHeight
-
-        const opacity = interpolate(
-          distanceFromCenter,
-          [0, visible / 2],
-          [1, 0.5],
-          'clamp',
-        )
-
-        const scale = interpolate(
-          distanceFromCenter,
-          [0, visible / 2],
-          [1.1, 0.7],
-          'clamp',
-        )
-
-        const currentIdx = Math.round(scrollY.value / itemHeight)
-
-        return {
-          opacity,
-          height: itemHeight,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor:
-            index === currentIdx ? selectedViewColor : 'transparent',
-          transform: [{ scale }],
-        }
-      })
-
-      return (
-        <Animated.View style={itemStyle}>
-          <Text style={[textStyle]}>{item.title}</Text>
-        </Animated.View>
-      )
-    },
-    [itemHeight, selectedViewColor, textStyle, visible, scrollY],
-  )
-
   const listStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }))
@@ -191,13 +145,24 @@ export const Picker = ({
       {...props}
       className={`justify-center overflow-hidden ${className || ''}`}
     >
-      <GestureHandlerRootView style={{ height: itemHeight * visible }}>
+      <GestureHandlerRootView style={{ height: itemHeight * totalVisible }}>
         <GestureDetector gesture={panGesture}>
-          <View style={{ height: itemHeight * visible }}>
+          <View style={{ height: itemHeight * totalVisible }}>
             <AnimatedLegendList
               ref={listRef}
               data={pickerData}
-              renderItem={renderItem}
+              renderItem={({ item, index }) => (
+                <Item
+                  item={item}
+                  index={index}
+                  itemHeight={itemHeight}
+                  scrollY={scrollY}
+                  selectedViewColor={selectedViewColor}
+                  textStyle={textStyle}
+                  totalVisible={totalVisible}
+                  visible={visible}
+                />
+              )}
               initialScrollIndex={initialIndex}
               style={[{ flex: 1 }, contentContainerStyle, listStyle]}
               showsVerticalScrollIndicator={false}
@@ -217,7 +182,7 @@ export const Picker = ({
             top: 0,
             left: 0,
             right: 0,
-            height: itemHeight * Math.floor(visible / 2),
+            height: itemHeight * Math.floor(visible),
             backgroundColor: maskColors.top,
           },
         ]}
@@ -230,7 +195,7 @@ export const Picker = ({
             bottom: 0,
             left: 0,
             right: 0,
-            height: itemHeight * Math.floor(visible / 2),
+            height: itemHeight * Math.floor(visible),
             backgroundColor: maskColors.bottom,
           },
         ]}
@@ -240,4 +205,62 @@ export const Picker = ({
   )
 }
 
+const Item = ({
+  item,
+  index,
+  itemHeight,
+  scrollY,
+  selectedViewColor,
+  textStyle,
+  totalVisible,
+  visible,
+}: {
+  item: PickerData
+  index: number
+  textStyle?: StyleProp<TextStyle>
+  itemHeight: number
+  scrollY: SharedValue<number>
+  totalVisible: number
+  visible: number
+  selectedViewColor?: string
+}) => {
+  const itemStyle = useAnimatedStyle(() => {
+    const centerOffset =
+      scrollY.value + (totalVisible * itemHeight) / 2 - itemHeight / 2
+    const itemPosition = index * itemHeight
+    const distanceFromCenter =
+      Math.abs(centerOffset - itemPosition) / itemHeight
+
+    const opacity = interpolate(
+      distanceFromCenter,
+      [0, visible],
+      [1, 0.5],
+      'clamp',
+    )
+
+    const scale = interpolate(
+      distanceFromCenter,
+      [0, visible],
+      [1.1, 0.7],
+      'clamp',
+    )
+
+    const currentIdx = Math.round(scrollY.value / itemHeight)
+
+    return {
+      opacity,
+      height: itemHeight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      // backgroundColor: index === currentIdx ? selectedViewColor : 'transparent',
+      transform: [{ scale }],
+    }
+  })
+
+  return (
+    <Animated.View style={itemStyle}>
+      <Text style={[textStyle]}>{item.title}</Text>
+    </Animated.View>
+  )
+}
 export default Picker
