@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import Picker, { PickerData } from './WheelPicker'
+import { Picker, PickerData } from './WheelPickerList'
 import { cn } from '../lib/utils'
 import Animated, {
   FadeIn,
@@ -398,9 +398,6 @@ const MonthYearPicker = ({
             pickerData={months}
             initialIndex={currentMonthIndex}
             onSelected={handleMonthChange}
-            itemHeight={44}
-            visible={7}
-            textStyle={{ fontSize: 20 }}
             className="bg-white"
             maskColors={{
               top: 'rgba(255, 255, 255, 0.9)',
@@ -414,9 +411,6 @@ const MonthYearPicker = ({
             pickerData={years}
             initialIndex={currentYearIndex}
             onSelected={handleYearChange}
-            itemHeight={44}
-            visible={7}
-            textStyle={{ fontSize: 20 }}
             className="bg-white"
             maskColors={{
               top: 'rgba(255, 255, 255, 0.9)',
