@@ -7,6 +7,7 @@ import {
   View,
   ViewProps,
   ViewStyle,
+  Platform,
 } from 'react-native'
 import Animated, {
   Easing,
@@ -16,7 +17,13 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated'
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler'
 
 export type PickerData = {
   title: string
@@ -63,6 +70,8 @@ export const Picker = ({
   const currentIndex = useSharedValue(initialIndex)
   const scale = useSharedValue(0.95)
   const scrollY = useSharedValue(0)
+  const isDragging = useSharedValue(false)
+  const startY = useSharedValue(0)
 
   const timingConfig = {
     duration: duration,
@@ -93,6 +102,41 @@ export const Picker = ({
       }
     },
   })
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      isDragging.value = true
+      startY.value = scrollY.value
+    })
+    .onUpdate((event) => {
+      if (Platform.OS === 'web') {
+        const newScrollY = startY.value - event.translationY
+        const maxScroll = (pickerData.length - visible) * itemHeight
+        const boundedScrollY = Math.max(0, Math.min(newScrollY, maxScroll))
+
+        if (listRef.current) {
+          listRef.current.scrollToOffset({
+            offset: boundedScrollY,
+            animated: false,
+          })
+        }
+      }
+    })
+    .onEnd((event) => {
+      if (Platform.OS === 'web') {
+        isDragging.value = false
+        const velocity = -event.velocityY
+        const currentOffset = scrollY.value
+        const targetOffset = Math.round(currentOffset / itemHeight) * itemHeight
+
+        if (listRef.current) {
+          listRef.current.scrollToOffset({
+            offset: targetOffset,
+            animated: true,
+          })
+        }
+      }
+    })
 
   const renderItem = useCallback(
     ({ item, index }: { item: PickerData; index: number }) => {
@@ -147,20 +191,25 @@ export const Picker = ({
       {...props}
       className={`justify-center overflow-hidden ${className || ''}`}
     >
-      <View style={{ height: itemHeight * visible }}>
-        <AnimatedLegendList
-          ref={listRef}
-          data={pickerData}
-          renderItem={renderItem}
-          initialScrollIndex={initialIndex}
-          style={[{ flex: 1 }, contentContainerStyle, listStyle]}
-          showsVerticalScrollIndicator={false}
-          snapToInterval={itemHeight}
-          decelerationRate="fast"
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
-        />
-      </View>
+      <GestureHandlerRootView style={{ height: itemHeight * visible }}>
+        <GestureDetector gesture={panGesture}>
+          <View style={{ height: itemHeight * visible }}>
+            <AnimatedLegendList
+              ref={listRef}
+              data={pickerData}
+              renderItem={renderItem}
+              initialScrollIndex={initialIndex}
+              style={[{ flex: 1 }, contentContainerStyle, listStyle]}
+              showsVerticalScrollIndicator={false}
+              snapToInterval={itemHeight}
+              decelerationRate="fast"
+              onScroll={scrollHandler}
+              scrollEventThrottle={16}
+            />
+          </View>
+        </GestureDetector>
+      </GestureHandlerRootView>
+
       <View
         style={[
           {
