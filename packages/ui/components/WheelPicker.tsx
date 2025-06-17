@@ -64,7 +64,7 @@ const Picker = ({
   return (
     <View
       {...props}
-      className={`flex-1 justify-center overflow-hidden ${className || ''}`}
+      className={`justify-center overflow-hidden ${className || ''}`}
     >
       <PickerItem
         itemHeight={itemHeight}
@@ -229,8 +229,8 @@ const PickerItem = ({
   const halfVisible = Math.floor(visible / 2)
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <View ref={containerRef} style={{ position: 'relative', flex: 1 }}>
+    <GestureHandlerRootView style={{}}>
+      <View ref={containerRef} style={{ position: 'relative' }}>
         {/* Gesture detector should wrap the scrollable content directly */}
         <GestureDetector gesture={panGesture}>
           <View
