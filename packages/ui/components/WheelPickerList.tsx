@@ -9,7 +9,8 @@ import {
   ViewStyle,
   Platform,
 } from 'react-native'
-import Animated, {
+import Animated,
+{
   Easing,
   interpolate,
   runOnJS,
@@ -99,7 +100,55 @@ export const Picker = ({
         updateIndex(index)
       }
     },
+    onMomentumEnd: () => {
+      // Ensure we snap to the nearest item when momentum scrolling ends
+      const targetOffset = Math.round(scrollY.value / itemHeight) * itemHeight
+      if (listRef.current && Math.abs(scrollY.value - targetOffset) > 1) {
+        listRef.current.scrollToOffset({
+          offset: targetOffset,
+          animated: true,
+        })
+      }
+    },
   })
+
+  // Handle wheel events for web
+  useEffect(() => {
+    if (Platform.OS === 'web' && listRef.current?._listRef?.current) {
+      const element = listRef.current._listRef.current
+
+      const handleWheel = (e: WheelEvent) => {
+        e.preventDefault()
+
+        const newScrollY = scrollY.value + e.deltaY
+        const maxScroll = (pickerData.length - 1) * itemHeight
+        const boundedScrollY = Math.max(0, Math.min(newScrollY, maxScroll))
+
+        // Clear any existing timeout
+        if ((element as any)._snapTimeout) {
+          clearTimeout((element as any)._snapTimeout)
+        }
+
+        // Scroll immediately to follow the wheel
+        listRef.current.scrollToOffset({
+          offset: boundedScrollY,
+          animated: false,
+        })
+
+        // Set a timeout to snap after scrolling stops
+        (element as any)._snapTimeout = setTimeout(() => {
+          const targetOffset = Math.round(boundedScrollY / itemHeight) * itemHeight
+          listRef.current.scrollToOffset({
+            offset: targetOffset,
+            animated: true,
+          })
+        }, 150) // Adjust this delay as needed
+      }
+
+      element.addEventListener('wheel', handleWheel, { passive: false })
+      return () => element.removeEventListener('wheel', handleWheel)
+    }
+  }, [itemHeight, pickerData.length])
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
@@ -123,9 +172,25 @@ export const Picker = ({
     .onEnd((event) => {
       if (Platform.OS === 'web') {
         isDragging.value = false
+        
         const velocity = -event.velocityY
         const currentOffset = scrollY.value
-        const targetOffset = Math.round(currentOffset / itemHeight) * itemHeight
+        
+        // Calculate the target offset based on velocity
+        let targetOffset
+        if (Math.abs(velocity) > 1000) {
+          // If scrolling fast, move one additional item in the direction of velocity
+          const direction = Math.sign(velocity)
+          const baseIndex = Math.round(currentOffset / itemHeight)
+          targetOffset = (baseIndex + direction) * itemHeight
+        } else {
+          // If scrolling slowly, just snap to nearest item
+          targetOffset = Math.round(currentOffset / itemHeight) * itemHeight
+        }
+        
+        // Ensure target is within bounds
+        const maxScroll = (pickerData.length - 1) * itemHeight
+        targetOffset = Math.max(0, Math.min(targetOffset, maxScroll))
 
         if (listRef.current) {
           listRef.current.scrollToOffset({
@@ -167,9 +232,12 @@ export const Picker = ({
               style={[{ flex: 1 }, contentContainerStyle, listStyle]}
               showsVerticalScrollIndicator={false}
               snapToInterval={itemHeight}
-              decelerationRate="fast"
+              decelerationRate={Platform.OS === 'web' ? 'normal' : 'fast'}
               onScroll={scrollHandler}
               scrollEventThrottle={16}
+              snapToOffsets={Array.from({ length: pickerData.length }, (_, i) => i * itemHeight)}
+              disableIntervalMomentum={true}
+              pagingEnabled={false}
             />
           </View>
         </GestureDetector>
