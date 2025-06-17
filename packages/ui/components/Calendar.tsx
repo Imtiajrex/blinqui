@@ -12,6 +12,7 @@ import { cn } from '../lib/utils'
 import Animated, {
   FadeIn,
   FadeOut,
+  LinearTransition,
   SlideInLeft,
   SlideInRight,
   SlideOutLeft,
@@ -132,7 +133,10 @@ const CalendarDay = memo(
   }: CalendarDayProps) => (
     <TouchableOpacity
       onPress={() => onSelect(date)}
-      className={cn('h-10 w-10 items-center justify-center', dayClassName)}
+      className={cn(
+        'min-h-[40px] flex-1 items-center justify-center',
+        dayClassName,
+      )}
     >
       <View
         className={cn(
@@ -143,7 +147,7 @@ const CalendarDay = memo(
       >
         <Text
           className={cn(
-            'font-medium',
+            'text-base font-medium',
             selected && cn('text-white', selectedDayTextClassName),
             today && cn('text-blue-600', todayTextClassName),
             !selected &&
@@ -166,7 +170,10 @@ const CalendarDay = memo(
 const CalendarDayHeader = memo(
   ({ day, dayHeaderClassName, dayHeaderTextClassName }: DayHeaderProps) => (
     <View
-      className={cn('h-8 w-10 items-center justify-center', dayHeaderClassName)}
+      className={cn(
+        'min-h-[32px] flex-1 items-center justify-center',
+        dayHeaderClassName,
+      )}
     >
       <Text
         className={cn(
@@ -281,85 +288,126 @@ const generateMonths = (): PickerData[] => [
   { title: 'November', value: 10 },
   { title: 'December', value: 11 },
 ]
-const generateDays = (year: number, month: number): PickerData[] => {
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const days: PickerData[] = []
-  for (let day = 1; day <= daysInMonth; day++) {
-    days.push({ title: day.toString(), value: day })
-  }
-  return days
-}
 
-// Animated wrapper component for calendar days
-const AnimatedCalendarDay = memo(
-  ({
-    date,
-    selected,
-    today,
-    currentMonth,
-    onSelect,
-    isEntering,
-    direction,
-    ...classNames
-  }: CalendarDayProps & {
-    isEntering: boolean
-    direction: 'left' | 'right'
-  }) => {
-    const enteringAnimation = direction === 'left' ? SlideInLeft : SlideInRight
-    const exitingAnimation = direction === 'left' ? SlideOutRight : SlideOutLeft
+// Month/Year Picker Component
+const MonthYearPicker = ({
+  currentDate,
+  onClose,
+  onDateChange,
+  isInitialRender,
+  ...classNames
+}: Omit<MonthYearPickerProps, 'visible'> & { isInitialRender?: boolean }) => {
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth())
 
-    return (
-      <Animated.View
-        entering={enteringAnimation.springify().damping(15)}
-        exiting={exitingAnimation.springify().damping(15)}
+  const years = useMemo(() => generateYears(1900, 2100), [])
+  const months = useMemo(() => generateMonths(), [])
+
+  const currentYearIndex = useMemo(
+    () => years.findIndex((year) => year.value === selectedYear),
+    [years, selectedYear],
+  )
+
+  const currentMonthIndex = useMemo(
+    () => months.findIndex((month) => month.value === selectedMonth),
+    [months, selectedMonth],
+  )
+
+  const handleConfirm = useCallback(() => {
+    const newDate = new Date(currentDate)
+    newDate.setFullYear(selectedYear)
+    newDate.setMonth(selectedMonth)
+    onDateChange(newDate)
+  }, [selectedYear, selectedMonth, currentDate, onDateChange])
+
+  const handleYearChange = useCallback((data: PickerData) => {
+    setSelectedYear(data.value)
+  }, [])
+
+  const handleMonthChange = useCallback((data: PickerData) => {
+    setSelectedMonth(data.value)
+  }, [])
+
+  return (
+    <Animated.View
+      className={cn('overflow-hidden', classNames.className)}
+      layout={LinearTransition}
+    >
+      {/* Header */}
+      <View
+        className={cn(
+          'flex-row items-center justify-between border-b border-gray-200 p-4',
+          classNames.modalHeaderClassName,
+        )}
       >
         <TouchableOpacity
-          onPress={() => onSelect(date)}
-          className={cn(
-            'h-10 w-10 items-center justify-center',
-            classNames.dayClassName,
-          )}
+          onPress={onClose}
+          className={cn('px-2', classNames.modalButtonClassName)}
         >
-          <View
+          <Text
             className={cn(
-              'h-8 w-8 items-center justify-center rounded-full',
-              selected && cn('bg-blue-500', classNames.selectedDayClassName),
-              today && cn('bg-blue-100', classNames.todayClassName),
+              'font-medium text-blue-500',
+              classNames.modalButtonTextClassName,
             )}
           >
-            <Text
-              className={cn(
-                'font-medium',
-                selected &&
-                  cn('text-white', classNames.selectedDayTextClassName),
-                today && cn('text-blue-600', classNames.todayTextClassName),
-                !selected &&
-                  !today &&
-                  currentMonth &&
-                  cn('text-gray-900', classNames.dayTextClassName),
-                !selected &&
-                  !today &&
-                  !currentMonth &&
-                  cn('text-gray-400', classNames.otherMonthDayTextClassName),
-              )}
-            >
-              {date.getDate()}
-            </Text>
-          </View>
+            Cancel
+          </Text>
         </TouchableOpacity>
-      </Animated.View>
-    )
-  },
-)
+        <Text
+          className={cn(
+            'font-semibold text-gray-900',
+            classNames.modalHeaderTextClassName,
+          )}
+        >
+          Select Date
+        </Text>
+        <TouchableOpacity
+          onPress={handleConfirm}
+          className={cn('px-2', classNames.modalButtonClassName)}
+        >
+          <Text
+            className={cn(
+              'font-medium text-blue-500',
+              classNames.modalButtonTextClassName,
+            )}
+          >
+            Done
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-// Calendar Grid Component with unified animation
+      {/* Pickers */}
+      <View
+        className={cn('w-full flex-row', classNames.pickerContainerClassName)}
+      >
+        <View className="flex-1">
+          <Picker
+            pickerData={months}
+            initialIndex={currentMonthIndex}
+            onSelected={handleMonthChange}
+          />
+        </View>
+        <View className="flex-1">
+          <Picker
+            pickerData={years}
+            initialIndex={currentYearIndex}
+            onSelected={handleYearChange}
+          />
+        </View>
+      </View>
+    </Animated.View>
+  )
+}
+
+// Calendar Grid Component
 const CalendarGrid = memo(
   ({
     currentDate,
     selectedDate,
     onDateSelect,
+    isInitialRender = false,
     ...classNames
-  }: CalendarGridProps) => {
+  }: CalendarGridProps & { isInitialRender?: boolean }) => {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
     const [transitionDirection, setTransitionDirection] = useState<
@@ -413,7 +461,7 @@ const CalendarGrid = memo(
     return (
       <View className="px-4">
         {/* Day headers */}
-        <View className="mb-2 grid grid-cols-7">
+        <View className="mb-2 flex-row">
           {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((day) => (
             <CalendarDayHeader
               key={day}
@@ -425,176 +473,43 @@ const CalendarGrid = memo(
         </View>
 
         {/* Calendar days with unified animation */}
-        <View className="relative h-60 overflow-hidden">
+        <View className="overflow-hidden">
           <Animated.View
-            className="absolute inset-0 grid grid-cols-7"
             key={`${year}-${month}`}
-            entering={(transitionDirection === 'right'
-              ? SlideInRight
-              : SlideInLeft
-            )
-              .springify()
-              .damping(20)
-              .stiffness(100)}
-            exiting={(transitionDirection === 'right'
-              ? SlideOutLeft
-              : SlideOutRight
-            )
-              .springify()
-              .damping(20)
-              .stiffness(100)}
+            entering={
+              !isInitialRender
+                ? (transitionDirection === 'right' ? SlideInRight : SlideInLeft)
+                    .springify()
+                    .damping(20)
+                    .stiffness(100)
+                : undefined
+            }
+            exiting={
+              transitionDirection === 'right'
+                ? SlideOutLeft.springify().damping(20).stiffness(100)
+                : SlideOutRight.springify().damping(20).stiffness(100)
+            }
           >
-            {calendarWeeks.map((week, weekIndex) =>
-              week.map((date, dayIndex) => (
-                <CalendarDay
-                  key={`${weekIndex}-${dayIndex}`}
-                  date={date}
-                  selected={isSelected(date)}
-                  today={isToday(date)}
-                  currentMonth={isCurrentMonth(date)}
-                  onSelect={onDateSelect}
-                  {...classNames}
-                />
-              )),
-            )}
+            <View>
+              {calendarWeeks.map((week, weekIndex) => (
+                <View key={weekIndex} className="flex-row">
+                  {week.map((date, dayIndex) => (
+                    <CalendarDay
+                      key={`${weekIndex}-${dayIndex}`}
+                      date={date}
+                      selected={isSelected(date)}
+                      today={isToday(date)}
+                      currentMonth={isCurrentMonth(date)}
+                      onSelect={onDateSelect}
+                      {...classNames}
+                    />
+                  ))}
+                </View>
+              ))}
+            </View>
           </Animated.View>
         </View>
       </View>
-    )
-  },
-)
-
-// Month/Year Picker Modal Component
-const MonthYearPicker = memo(
-  ({
-    visible,
-    currentDate,
-    onClose,
-    onDateChange,
-    ...classNames
-  }: MonthYearPickerProps) => {
-    const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
-    const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth())
-
-    const years = useMemo(() => generateYears(1900, 2100), [])
-    const months = useMemo(() => generateMonths(), [])
-
-    const currentYearIndex = useMemo(
-      () => years.findIndex((year) => year.value === selectedYear),
-      [years, selectedYear],
-    )
-
-    const handleConfirm = useCallback(() => {
-      const newDate = new Date(currentDate)
-      newDate.setFullYear(selectedYear)
-      newDate.setMonth(selectedMonth)
-      onDateChange(newDate)
-      onClose()
-    }, [selectedYear, selectedMonth, currentDate, onDateChange, onClose])
-
-    const handleYearChange = useCallback((data: PickerData) => {
-      setSelectedYear(data.value)
-    }, [])
-
-    const handleMonthChange = useCallback((data: PickerData) => {
-      setSelectedMonth(data.value)
-    }, [])
-
-    return (
-      <Modal
-        visible={visible}
-        transparent
-        animationType="fade"
-        onRequestClose={onClose}
-      >
-        <Pressable
-          className={cn(
-            'flex-1 items-center justify-center bg-black/50',
-            classNames.modalClassName,
-          )}
-          onPress={onClose}
-        >
-          <Pressable
-            className={cn(
-              'mx-4 w-full max-w-md overflow-hidden rounded-2xl bg-white',
-              classNames.modalContentClassName,
-            )}
-            onPress={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <View
-              className={cn(
-                'flex-row items-center justify-between border-b border-gray-200 p-4',
-                classNames.modalHeaderClassName,
-              )}
-            >
-              <TouchableOpacity
-                onPress={onClose}
-                className={classNames.modalButtonClassName}
-              >
-                <Text
-                  className={cn(
-                    'font-medium text-blue-500',
-                    classNames.modalButtonTextClassName,
-                  )}
-                >
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <Text
-                className={cn(
-                  'font-semibold text-gray-900',
-                  classNames.modalHeaderTextClassName,
-                )}
-              >
-                Select Date
-              </Text>
-              <TouchableOpacity
-                onPress={handleConfirm}
-                className={classNames.modalButtonClassName}
-              >
-                <Text
-                  className={cn(
-                    'font-medium text-blue-500',
-                    classNames.modalButtonTextClassName,
-                  )}
-                >
-                  Done
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Pickers */}
-            <View
-              className={cn(
-                'h-64 flex-row',
-                classNames.pickerContainerClassName,
-              )}
-            >
-              <View className="flex-1">
-                <Picker
-                  pickerData={months}
-                  initialIndex={selectedMonth}
-                  onSelected={handleMonthChange}
-                  itemHeight={44}
-                  visible={5}
-                  textStyle={{ fontSize: 18 }}
-                />
-              </View>
-              <View className="flex-1">
-                <Picker
-                  pickerData={years}
-                  initialIndex={currentYearIndex}
-                  onSelected={handleYearChange}
-                  itemHeight={44}
-                  visible={5}
-                  textStyle={{ fontSize: 18 }}
-                />
-              </View>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
     )
   },
 )
@@ -611,6 +526,7 @@ export const DatePicker = memo(
     const [selectedDate, setSelectedDate] = useState(initialDate)
     const [currentViewDate, setCurrentViewDate] = useState(initialDate)
     const [showMonthYearPicker, setShowMonthYearPicker] = useState(false)
+    const [isInitialRender, setIsInitialRender] = useState(true)
 
     const handleDateSelect = useCallback(
       (date: Date) => {
@@ -622,9 +538,15 @@ export const DatePicker = memo(
 
     const handleMonthYearChange = useCallback((date: Date) => {
       setCurrentViewDate(date)
+      setShowMonthYearPicker(false)
+    }, [])
+
+    const handlePickerClose = useCallback(() => {
+      setShowMonthYearPicker(false)
     }, [])
 
     const navigateMonth = useCallback((direction: 'prev' | 'next') => {
+      setIsInitialRender(false)
       setCurrentViewDate((prev) => {
         const newDate = new Date(prev)
         if (direction === 'prev') {
@@ -647,7 +569,10 @@ export const DatePicker = memo(
 
         <CalendarHeader
           currentDate={currentViewDate}
-          onMonthYearClick={() => setShowMonthYearPicker(true)}
+          onMonthYearClick={() => {
+            setIsInitialRender(false)
+            setShowMonthYearPicker(true)
+          }}
           onNavigateMonth={navigateMonth}
           headerClassName={classNames.headerClassName}
           monthYearTextClassName={classNames.monthYearTextClassName}
@@ -657,35 +582,40 @@ export const DatePicker = memo(
           }
         />
 
-        <CalendarGrid
-          currentDate={currentViewDate}
-          selectedDate={selectedDate}
-          onDateSelect={handleDateSelect}
-          dayHeaderClassName={classNames.dayHeaderClassName}
-          dayHeaderTextClassName={classNames.dayHeaderTextClassName}
-          dayClassName={classNames.dayClassName}
-          dayTextClassName={classNames.dayTextClassName}
-          selectedDayClassName={classNames.selectedDayClassName}
-          selectedDayTextClassName={classNames.selectedDayTextClassName}
-          todayClassName={classNames.todayClassName}
-          todayTextClassName={classNames.todayTextClassName}
-          otherMonthDayClassName={classNames.otherMonthDayClassName}
-          otherMonthDayTextClassName={classNames.otherMonthDayTextClassName}
-        />
-
-        <MonthYearPicker
-          visible={showMonthYearPicker}
-          currentDate={currentViewDate}
-          onClose={() => setShowMonthYearPicker(false)}
-          onDateChange={handleMonthYearChange}
-          modalClassName={classNames.modalClassName}
-          modalContentClassName={classNames.modalContentClassName}
-          modalHeaderClassName={classNames.modalHeaderClassName}
-          modalHeaderTextClassName={classNames.modalHeaderTextClassName}
-          modalButtonClassName={classNames.modalButtonClassName}
-          modalButtonTextClassName={classNames.modalButtonTextClassName}
-          pickerContainerClassName={classNames.pickerContainerClassName}
-        />
+        <View className="relative">
+          {showMonthYearPicker ? (
+            <MonthYearPicker
+              currentDate={currentViewDate}
+              onClose={handlePickerClose}
+              onDateChange={handleMonthYearChange}
+              isInitialRender={isInitialRender}
+              modalClassName={classNames.modalClassName}
+              modalContentClassName={classNames.modalContentClassName}
+              modalHeaderClassName={classNames.modalHeaderClassName}
+              modalHeaderTextClassName={classNames.modalHeaderTextClassName}
+              modalButtonClassName={classNames.modalButtonClassName}
+              modalButtonTextClassName={classNames.modalButtonTextClassName}
+              pickerContainerClassName={classNames.pickerContainerClassName}
+            />
+          ) : (
+            <CalendarGrid
+              currentDate={currentViewDate}
+              selectedDate={selectedDate}
+              onDateSelect={handleDateSelect}
+              isInitialRender={isInitialRender}
+              dayHeaderClassName={classNames.dayHeaderClassName}
+              dayHeaderTextClassName={classNames.dayHeaderTextClassName}
+              dayClassName={classNames.dayClassName}
+              dayTextClassName={classNames.dayTextClassName}
+              selectedDayClassName={classNames.selectedDayClassName}
+              selectedDayTextClassName={classNames.selectedDayTextClassName}
+              todayClassName={classNames.todayClassName}
+              todayTextClassName={classNames.todayTextClassName}
+              otherMonthDayClassName={classNames.otherMonthDayClassName}
+              otherMonthDayTextClassName={classNames.otherMonthDayTextClassName}
+            />
+          )}
+        </View>
       </View>
     )
   },
