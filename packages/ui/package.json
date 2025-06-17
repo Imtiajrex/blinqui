@@ -3,6 +3,7 @@
   "name": "blinqui",
   "main": "index.ts",
   "dependencies": {
+    "@legendapp/list": "^1.1.0",
     "clsx": "^2.0.0",
     "moti": "latest",
     "nativewind": "latest",

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View } from 'react-native'
-import { WheelPicker } from 'blinqui'
+import { Picker as WheelPicker } from 'blinqui/components/WheelPickerList'
 
 // ...
 const DATA = [
