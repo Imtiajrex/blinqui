@@ -9,8 +9,7 @@ import {
   ViewStyle,
   Platform,
 } from 'react-native'
-import Animated,
-{
+import Animated, {
   Easing,
   interpolate,
   runOnJS,
@@ -133,11 +132,12 @@ export const Picker = ({
         listRef.current.scrollToOffset({
           offset: boundedScrollY,
           animated: false,
-        })
-
-        // Set a timeout to snap after scrolling stops
-        (element as any)._snapTimeout = setTimeout(() => {
-          const targetOffset = Math.round(boundedScrollY / itemHeight) * itemHeight
+        })(
+          // Set a timeout to snap after scrolling stops
+          element as any,
+        )._snapTimeout = setTimeout(() => {
+          const targetOffset =
+            Math.round(boundedScrollY / itemHeight) * itemHeight
           listRef.current.scrollToOffset({
             offset: targetOffset,
             animated: true,
@@ -172,10 +172,10 @@ export const Picker = ({
     .onEnd((event) => {
       if (Platform.OS === 'web') {
         isDragging.value = false
-        
+
         const velocity = -event.velocityY
         const currentOffset = scrollY.value
-        
+
         // Calculate the target offset based on velocity
         let targetOffset
         if (Math.abs(velocity) > 1000) {
@@ -187,7 +187,7 @@ export const Picker = ({
           // If scrolling slowly, just snap to nearest item
           targetOffset = Math.round(currentOffset / itemHeight) * itemHeight
         }
-        
+
         // Ensure target is within bounds
         const maxScroll = (pickerData.length - 1) * itemHeight
         targetOffset = Math.max(0, Math.min(targetOffset, maxScroll))
@@ -235,7 +235,10 @@ export const Picker = ({
               decelerationRate={Platform.OS === 'web' ? 'normal' : 'fast'}
               onScroll={scrollHandler}
               scrollEventThrottle={16}
-              snapToOffsets={Array.from({ length: pickerData.length }, (_, i) => i * itemHeight)}
+              snapToOffsets={Array.from(
+                { length: pickerData.length },
+                (_, i) => i * itemHeight,
+              )}
               disableIntervalMomentum={true}
               pagingEnabled={false}
             />
