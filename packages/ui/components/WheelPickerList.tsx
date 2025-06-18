@@ -8,12 +8,15 @@ import {
   ViewProps,
   ViewStyle,
   Platform,
+  FlatList,
 } from 'react-native'
 import Animated, {
+  createAnimatedPropAdapter,
   Easing,
   interpolate,
   runOnJS,
   SharedValue,
+  useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -25,6 +28,7 @@ import {
   GestureDetector,
   GestureHandlerRootView,
 } from 'react-native-gesture-handler'
+import { LegendListRef } from '@legendapp/list'
 
 export type PickerData = {
   title: string
@@ -49,6 +53,7 @@ export type PickerProps = ViewProps & {
 
 const duration = 300
 
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList)
 export const Picker = ({
   itemHeight = 40,
   pickerData,
@@ -66,26 +71,29 @@ export const Picker = ({
   className,
   ...props
 }: PickerProps & { className?: string }) => {
-  const listRef = useRef<any>(null)
+  const listRef = useAnimatedRef<Animated.FlatList<any>>()
+  const initialOffset = initialIndex * itemHeight
   const currentIndex = useSharedValue(initialIndex)
-  const scale = useSharedValue(0.95)
-  const scrollY = useSharedValue(0)
+  const scrollY = useSharedValue(initialOffset)
   const isDragging = useSharedValue(false)
   const startY = useSharedValue(0)
 
-  // Total visible items is 2 * visible + 1 (items on top + selected item + items on bottom)
   const totalVisible = 2 * visible + 1
-
   useEffect(() => {
-    scale.value = withSpring(1)
+    if (Platform.OS === 'web')
+      if (listRef.current)
+        listRef.current?.scrollToOffset({
+          offset: initialIndex * itemHeight,
+          animated: true,
+        })
+    // This is a workaround for the initial scroll position not being set correctly
   }, [])
-
   const updateIndex = useCallback(
     (index: number) => {
       'worklet'
       if (index >= 0 && index < pickerData.length) {
-        currentIndex.value = index + visible
-        runOnJS(onSelected)(pickerData[index + visible]!, index)
+        currentIndex.value = index
+        runOnJS(onSelected)(pickerData[index]!, index)
       }
     },
     [pickerData, onSelected],
@@ -94,61 +102,21 @@ export const Picker = ({
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y
-      const index = Math.round(scrollY.value / itemHeight)
+      if (Platform.OS === 'web') {
+        // For web, we need to handle the scroll position manually
+        const index = Math.round(event.contentOffset.y / itemHeight)
+        if (index !== currentIndex.value) {
+          updateIndex(index)
+        }
+      }
+    },
+    onMomentumEnd: (event) => {
+      const index = Math.round(event.contentOffset.y / itemHeight)
       if (index !== currentIndex.value) {
         updateIndex(index)
       }
     },
-    onMomentumEnd: () => {
-      // Ensure we snap to the nearest item when momentum scrolling ends
-      const targetOffset = Math.round(scrollY.value / itemHeight) * itemHeight
-      if (listRef.current && Math.abs(scrollY.value - targetOffset) > 1) {
-        listRef.current.scrollToOffset({
-          offset: targetOffset,
-          animated: true,
-        })
-      }
-    },
   })
-
-  // Handle wheel events for web
-  useEffect(() => {
-    if (Platform.OS === 'web' && listRef.current?._listRef?.current) {
-      const element = listRef.current._listRef.current
-
-      const handleWheel = (e: WheelEvent) => {
-        e.preventDefault()
-
-        const newScrollY = scrollY.value + e.deltaY
-        const maxScroll = (pickerData.length - 1) * itemHeight
-        const boundedScrollY = Math.max(0, Math.min(newScrollY, maxScroll))
-
-        // Clear any existing timeout
-        if ((element as any)._snapTimeout) {
-          clearTimeout((element as any)._snapTimeout)
-        }
-
-        // Scroll immediately to follow the wheel
-        listRef.current.scrollToOffset({
-          offset: boundedScrollY,
-          animated: false,
-        })(
-          // Set a timeout to snap after scrolling stops
-          element as any,
-        )._snapTimeout = setTimeout(() => {
-          const targetOffset =
-            Math.round(boundedScrollY / itemHeight) * itemHeight
-          listRef.current.scrollToOffset({
-            offset: targetOffset,
-            animated: true,
-          })
-        }, 150) // Adjust this delay as needed
-      }
-
-      element.addEventListener('wheel', handleWheel, { passive: false })
-      return () => element.removeEventListener('wheel', handleWheel)
-    }
-  }, [itemHeight, pickerData.length])
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
@@ -201,19 +169,19 @@ export const Picker = ({
       }
     })
 
-  const listStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }))
-
   return (
     <View
       {...props}
       className={`justify-center overflow-hidden ${className || ''}`}
     >
-      <GestureHandlerRootView style={{ height: itemHeight * totalVisible }}>
+      <GestureHandlerRootView
+        style={{
+          height: itemHeight * totalVisible,
+        }}
+      >
         <GestureDetector gesture={panGesture}>
           <View style={{ height: itemHeight * totalVisible }}>
-            <AnimatedLegendList
+            <Animated.FlatList
               ref={listRef}
               data={pickerData}
               renderItem={({ item, index }) => (
@@ -229,18 +197,23 @@ export const Picker = ({
                 />
               )}
               initialScrollIndex={initialIndex}
-              style={[{ flex: 1 }, contentContainerStyle, listStyle]}
+              getItemLayout={(data, index) => ({
+                length: itemHeight,
+                offset: index * itemHeight,
+                index,
+              })}
+              keyExtractor={(item, index) =>
+                item.value?.toString() || index.toString()
+              }
+              style={[{ flex: 1 }]}
+              contentContainerStyle={{
+                paddingTop: itemHeight * visible,
+                paddingBottom: itemHeight * visible,
+              }}
               showsVerticalScrollIndicator={false}
               snapToInterval={itemHeight}
               decelerationRate={Platform.OS === 'web' ? 'normal' : 'fast'}
               onScroll={scrollHandler}
-              scrollEventThrottle={16}
-              snapToOffsets={Array.from(
-                { length: pickerData.length },
-                (_, i) => i * itemHeight,
-              )}
-              disableIntervalMomentum={true}
-              pagingEnabled={false}
             />
           </View>
         </GestureDetector>
@@ -295,10 +268,10 @@ const Item = ({
   visible: number
   selectedViewColor?: string
 }) => {
-  const itemStyle = useAnimatedStyle(() => {
+  const animatedTextStyle = useAnimatedStyle(() => {
     const centerOffset =
       scrollY.value + (totalVisible * itemHeight) / 2 - itemHeight / 2
-    const itemPosition = index * itemHeight
+    const itemPosition = (index + 2) * itemHeight
     const distanceFromCenter =
       Math.abs(centerOffset - itemPosition) / itemHeight
 
@@ -316,21 +289,23 @@ const Item = ({
       'clamp',
     )
 
-    const currentIdx = Math.round(scrollY.value / itemHeight)
-
     return {
       opacity,
-      height: itemHeight,
-      justifyContent: 'center',
-      alignItems: 'center',
       // backgroundColor: index === currentIdx ? selectedViewColor : 'transparent',
       transform: [{ scale }],
     }
   })
-
   return (
-    <Animated.View style={itemStyle}>
-      <Text style={[textStyle]}>{item.title}</Text>
+    <Animated.View
+      style={{
+        height: itemHeight,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      <Animated.Text style={[animatedTextStyle, textStyle]}>
+        {item.title}
+      </Animated.Text>
     </Animated.View>
   )
 }
