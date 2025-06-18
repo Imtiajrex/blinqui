@@ -80,3 +80,4 @@ build/**
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+branch_structure.json
