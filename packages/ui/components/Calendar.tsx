@@ -1,35 +1,22 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { StatusBar, Text, TouchableOpacity, View } from 'react-native'
+import Animated, {
+  FadeIn,
+  LinearTransition,
+  SlideInLeft,
+  SlideInRight,
+  SlideOutLeft,
+  SlideOutRight,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated'
 import {
   CalendarProvider,
   useCalendarContext,
 } from '../contexts/CalendarContext'
-import {
-  Modal,
-  Pressable,
-  StatusBar,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native'
-import { Picker, PickerData } from './WheelPickerList'
 import { cn } from '../lib/utils'
-import Animated, {
-  FadeIn,
-  FadeOut,
-  LinearTransition,
-  SlideInDown,
-  SlideInLeft,
-  SlideInRight,
-  SlideInUp,
-  SlideOutLeft,
-  SlideOutRight,
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated'
-import { SolarIcon } from 'react-native-solar-icons'
+import { Picker, PickerData } from './WheelPickerList'
+import { Ionicons } from '@expo/vector-icons'
 
 // Shared className types
 interface BaseClassNames {
@@ -189,18 +176,6 @@ const CalendarDayHeader = memo(
   ),
 )
 
-// remapProps(SolarIcon, {
-//   className: {
-//     target: true,
-//     nativeStyleToProp: {
-//       color: 'color',
-//       width: 'size',
-//       height: 'size',
-//       fontSize: 'size',
-//     },
-//   },
-// })
-
 const CalendarHeader = memo(
   ({
     onMonthYearClick,
@@ -268,12 +243,7 @@ const CalendarHeader = memo(
             {formatMonth(currentDate)}
           </Text>
           <Animated.View style={animatedStyle}>
-            {/* <SolarIcon
-              name="AltArrowRight"
-              type="line-duotone"
-              size={24}
-              color="blue"
-            /> */}
+            <Ionicons name="chevron-forward" size={24} color="blue" />
           </Animated.View>
         </TouchableOpacity>
 
@@ -387,7 +357,7 @@ const MonthYearPicker = ({
   return (
     <Animated.View
       className={cn('overflow-hidden', classNames.className)}
-      entering={SlideInUp.duration(300)}
+      entering={FadeIn}
       layout={LinearTransition}
     >
       <View
@@ -398,12 +368,6 @@ const MonthYearPicker = ({
             pickerData={months}
             initialIndex={currentMonthIndex}
             onSelected={handleMonthChange}
-            className="bg-white"
-            maskColors={{
-              top: 'rgba(255, 255, 255, 0.9)',
-              selected: 'transparent',
-              bottom: 'rgba(255, 255, 255, 0.9)',
-            }}
           />
         </View>
         <View className="flex-1">
@@ -411,12 +375,6 @@ const MonthYearPicker = ({
             pickerData={years}
             initialIndex={currentYearIndex}
             onSelected={handleYearChange}
-            className="bg-white"
-            maskColors={{
-              top: 'rgba(255, 255, 255, 0.9)',
-              selected: 'transparent',
-              bottom: 'rgba(255, 255, 255, 0.9)',
-            }}
           />
         </View>
       </View>
@@ -592,6 +550,9 @@ const CalendarContent = memo(
       },
       [setCurrentDate],
     )
+    useEffect(() => {
+      setIsInitialRender(false)
+    }, [])
 
     return (
       <View
