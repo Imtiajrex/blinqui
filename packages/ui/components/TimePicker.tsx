@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Text, View } from 'react-native'
-import Picker, { PickerData } from './WheelPicker' // Import your picker component
+import { Picker, PickerData } from './WheelPicker' // Import your picker component
 
 const generateHours = (use24Hour: boolean): PickerData[] => {
   const hours: PickerData[] = []

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Text, View } from 'react-native'
-import { Picker as WheelPicker } from 'blinqui/components/WheelPickerList'
+import { Picker as WheelPicker } from 'blinqui'
 
 const DATA = Array.from({ length: 100 }, (_, i) => ({
   title: `Item ${i + 1}`,
