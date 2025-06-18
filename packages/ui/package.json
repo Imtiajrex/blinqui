@@ -3,11 +3,12 @@
   "name": "blinqui",
   "main": "index.ts",
   "dependencies": {
+    "@expo/vector-icons": "^14.1.0",
     "@legendapp/list": "^1.1.0",
+    "@shopify/flash-list": "^1.8.3",
     "clsx": "^2.0.0",
     "moti": "latest",
     "nativewind": "latest",
-    "react-native-solar-icons": "^1.0.4",
     "tailwind-merge": "^3.3.1",
     "zustand": "^5.0.5"
   },
